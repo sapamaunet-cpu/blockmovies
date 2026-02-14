@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Memuat...</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header><h1 onclick="location.href='/'" style="cursor:pointer">Movie<span class="hub">Hub</span></h1></header>
+    
+    <div class="detail-box" id="content"></div>
+
+    <script>
+        async function load() {
+            const id = window.location.pathname.split('/').pop();
+            const res = await fetch(`/api/get-detail?id=${id}`);
+            const m = await res.json();
+            
+            document.title = m.title;
+            document.getElementById('content').innerHTML = `
+                <div class="player-placeholder">
+                    <iframe src="https://situsku.com/play/tmdb/${m.id}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
+                </div>
+                <div class="flex-detail">
+                    <img src="https://image.tmdb.org/t/p/w500${m.poster_path}">
+                    <div>
+                        <h2>${m.title}</h2>
+                        <p>Rating: ⭐ ${m.vote_average}</p>
+                        <p>${m.overview}</p>
+                        <div style="font-size:12px; color:gray; margin-top:20px;">Source: TMDb</div>
+                    </div>
+                </div>
+                <h3 style="margin-top:40px">Film Terkait</h3>
+                <div class="container" style="padding:0">
+                    ${m.recommendations.results.slice(0,6).map(r => `
+                        <div class="card" onclick="location.href='/play/tmdb/${r.id}'">
+                            <img src="https://image.tmdb.org/t/p/w500${r.poster_path}">
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        load();
+    </script>
+</body>
+</html>

@@ -3,94 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MovieID - Katalog Film Modern</title>
+    <title>MovieID - Streaming & Katalog Film</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        body.modal-open { overflow: hidden; }
+        .modal-open { overflow: hidden; }
+        .movie-card:hover img { transform: scale(1.05); }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
-<body class="bg-gray-900 text-white font-sans">
+<body class="bg-[#0f172a] text-slate-200 antialiased">
 
-    <div id="movieModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-        <div class="bg-gray-800 w-full max-w-4xl max-h-[90vh] rounded-2xl overflow-hidden relative shadow-2xl flex flex-col">
-            <button onclick="closeModal()" class="absolute top-4 right-4 z-50 bg-black/50 w-10 h-10 rounded-full hover:bg-red-600 transition">✕</button>
-            <div id="modalContent" class="overflow-y-auto"></div>
+    <div id="movieModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/90 backdrop-blur-md fade-in">
+        <div class="bg-[#1e293b] w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden relative shadow-2xl flex flex-col">
+            <button onclick="closeModal()" class="absolute top-4 right-4 z-50 bg-black/50 text-white w-10 h-10 rounded-full hover:bg-red-600 transition flex items-center justify-center font-bold">✕</button>
+            <div id="modalContent" class="overflow-y-auto no-scrollbar"></div>
         </div>
     </div>
 
-    <header class="p-6 bg-gray-800/50 backdrop-blur-lg sticky top-0 z-50">
-        <div class="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-            <h1 class="text-3xl font-black text-red-600 tracking-tighter cursor-pointer" onclick="location.reload()">MOVIEID</h1>
-            <div class="flex flex-1 w-full max-w-2xl gap-2">
-                <input type="text" id="searchInput" placeholder="Cari judul film..." class="w-full p-3 rounded-xl bg-gray-700 border border-transparent focus:border-red-500 focus:outline-none transition">
-                <button onclick="searchMovies()" class="bg-red-600 px-6 py-3 rounded-xl font-bold hover:bg-red-700 transition">Cari</button>
+    <header class="p-6 bg-[#0f172a]/80 backdrop-blur-xl sticky top-0 z-50 border-b border-slate-800">
+        <div class="container mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+            <h1 class="text-3xl font-extrabold text-red-600 tracking-tighter cursor-pointer" onclick="location.reload()">MOVIE<span class="text-white">ID</span></h1>
+            
+            <div class="flex flex-1 w-full max-w-2xl group">
+                <input type="text" id="searchInput" placeholder="Cari judul film..." 
+                    class="w-full p-4 rounded-l-2xl bg-slate-800 border-y border-l border-slate-700 focus:border-red-500 focus:outline-none transition text-white">
+                <button onclick="searchMovies()" class="bg-red-600 px-8 py-4 rounded-r-2xl font-bold hover:bg-red-700 transition flex items-center gap-2 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor font-bold"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <span class="hidden md:block">Cari</span>
+                </button>
             </div>
         </div>
-        <div class="container mx-auto mt-4 flex gap-2 overflow-x-auto pb-2 no-scrollbar" id="genreList">
-            <button onclick="fetchMovies()" class="bg-red-600 px-5 py-1.5 rounded-full text-sm font-medium transition">Semua</button>
+        
+        <div class="container mx-auto mt-6 flex gap-3 overflow-x-auto pb-2 no-scrollbar" id="genreList">
+            <button onclick="fetchMovies()" class="bg-red-600 text-white px-6 py-2 rounded-full text-sm font-semibold transition hover:scale-105 shadow-lg shadow-red-900/20">Semua</button>
         </div>
     </header>
 
     <main class="container mx-auto p-6">
-        <h2 id="sectionTitle" class="text-2xl font-bold mb-8 border-l-4 border-red-600 pl-4">Film Populer</h2>
-        <div id="movieGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8"></div>
+        <div class="flex items-center justify-between mb-8">
+            <h2 id="sectionTitle" class="text-2xl font-extrabold border-l-4 border-red-600 pl-4 uppercase tracking-wider">Film Populer</h2>
+        </div>
+        <div id="movieGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+            <div class="col-span-full py-20 text-center text-slate-500 italic">Memuat film...</div>
+        </div>
     </main>
 
     <script>
         const API_URL = '/api';
         const IMG_URL = 'https://image.tmdb.org/t/p/w500';
 
+        // Load Genre
         async function fetchGenres() {
-            const res = await fetch(`${API_URL}/genres`);
-            const data = await res.json();
-            const container = document.getElementById('genreList');
-            data.genres.forEach(g => {
-                const btn = document.createElement('button');
-                btn.className = "bg-gray-700 px-5 py-1.5 rounded-full text-sm font-medium hover:bg-red-600 transition whitespace-nowrap";
-                btn.innerText = g.name;
-                btn.onclick = () => fetchMovies(`/discover?genreId=${g.id}`, `Genre: ${g.name}`);
-                container.appendChild(btn);
-            });
+            try {
+                const res = await fetch(`${API_URL}/genres`);
+                const data = await res.json();
+                const container = document.getElementById('genreList');
+                data.genres.forEach(g => {
+                    const btn = document.createElement('button');
+                    btn.className = "bg-slate-800 text-slate-300 px-6 py-2 rounded-full text-sm font-semibold hover:bg-red-600 hover:text-white transition whitespace-nowrap border border-slate-700";
+                    btn.innerText = g.name;
+                    btn.onclick = () => fetchMovies(`/discover?genreId=${g.id}`, `Genre: ${g.name}`);
+                    container.appendChild(btn);
+                });
+            } catch(e) { console.log(e) }
         }
 
+        // Load Movies
         async function fetchMovies(path = '/movies', title = 'Film Populer') {
             const grid = document.getElementById('movieGrid');
             document.getElementById('sectionTitle').innerText = title;
-            grid.innerHTML = '';
+            grid.innerHTML = '<div class="col-span-full py-20 text-center animate-pulse">Menghubungkan ke database...</div>';
             
-            const res = await fetch(`${API_URL}${path}`);
-            const data = await res.json();
-            
-            data.results.forEach(m => {
-                const card = document.createElement('div');
-                card.className = "bg-gray-800 rounded-2xl overflow-hidden hover:scale-105 cursor-pointer transition-all duration-300 shadow-lg group";
-                card.onclick = () => showDetail(m.id);
-                card.innerHTML = `
-                    <div class="relative">
-                        <img src="${m.poster_path ? IMG_URL + m.poster_path : 'https://via.placeholder.com/500x750'}" class="w-full h-[350px] object-cover">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                            <span class="bg-red-600 text-xs font-bold px-2 py-1 rounded">LIHAT DETAIL</span>
+            try {
+                const res = await fetch(`${API_URL}${path}`);
+                const data = await res.json();
+                
+                grid.innerHTML = data.results.map(m => `
+                    <div onclick="showDetail(${m.id})" class="movie-card group bg-slate-800 rounded-2xl overflow-hidden cursor-pointer shadow-xl transition-all duration-300 hover:-translate-y-2">
+                        <div class="relative overflow-hidden">
+                            <img src="${m.poster_path ? IMG_URL + m.poster_path : 'https://via.placeholder.com/500x750?text=No+Image'}" 
+                                class="w-full h-[320px] object-cover transition-transform duration-500">
+                            <div class="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent opacity-60"></div>
+                            <div class="absolute bottom-3 left-3 bg-red-600 text-[10px] font-bold px-2 py-1 rounded-lg shadow-lg">HD</div>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="font-bold truncate text-slate-100 group-hover:text-red-500 transition">${m.title}</h3>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-slate-400 text-xs">${m.release_date ? m.release_date.split('-')[0] : 'N/A'}</span>
+                                <span class="text-yellow-500 font-bold text-xs flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    ${m.vote_average.toFixed(1)}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                    <div class="p-4">
-                        <h3 class="font-bold truncate text-lg">${m.title}</h3>
-                        <div class="flex items-center justify-between mt-2">
-                            <span class="text-gray-400 text-sm">${m.release_date ? m.release_date.split('-')[0] : 'N/A'}</span>
-                            <span class="text-yellow-400 font-bold text-sm">⭐ ${m.vote_average.toFixed(1)}</span>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+                `).join('');
+            } catch (err) { grid.innerHTML = '<p class="col-span-full text-center text-red-500">Gagal memuat data.</p>'; }
         }
 
+        // Show Detail & Player
         async function showDetail(id) {
             const modal = document.getElementById('movieModal');
             const content = document.getElementById('modalContent');
             modal.classList.remove('hidden');
             document.body.classList.add('modal-open');
-            content.innerHTML = '<div class="p-20 text-center text-xl font-bold animate-pulse">Menyiapkan Info Film...</div>';
+            content.innerHTML = '<div class="p-32 text-center text-xl font-bold animate-pulse text-red-500 uppercase tracking-widest">Membuka Folder Film...</div>';
 
             try {
                 const res = await fetch(`${API_URL}/movie/${id}`);
@@ -98,50 +119,90 @@
                 const trailer = m.videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
 
                 content.innerHTML = `
-                    <div class="flex flex-col md:flex-row">
-                        <img src="${m.poster_path ? IMG_URL + m.poster_path : 'https://via.placeholder.com/500x750'}" class="w-full md:w-[350px] h-auto object-cover">
-                        <div class="p-8 flex-1">
-                            <h2 class="text-4xl font-black mb-2">${m.title}</h2>
-                            <p class="text-gray-400 mb-4">${m.release_date} • ${m.runtime} Menit</p>
-                            <div class="flex items-center gap-4 mb-6">
-                                <span class="text-3xl font-bold text-yellow-400">⭐ ${m.vote_average.toFixed(1)}</span>
-                                <div class="flex gap-2">
-                                    ${m.genres.map(g => `<span class="text-[10px] border border-gray-500 px-2 py-0.5 rounded-full uppercase">${g.name}</span>`).join('')}
+                    <div class="flex flex-col lg:flex-row">
+                        <div class="w-full lg:w-[380px] shrink-0 bg-slate-900">
+                            <img src="${m.poster_path ? IMG_URL + m.poster_path : 'https://via.placeholder.com/500x750'}" class="w-full h-full object-cover shadow-2xl">
+                            <button onclick="playMovie('${m.id}')" class="w-full bg-red-600 hover:bg-red-700 text-white font-black py-6 flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_-10px_30px_rgba(220,38,38,0.3)]">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                                TONTON SEKARANG
+                            </button>
+                        </div>
+                        
+                        <div class="p-8 lg:p-12 flex-1">
+                            <div id="playerArea" class="hidden mb-10 fade-in">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-red-500 font-black uppercase tracking-tighter text-lg italic">Streaming Mode</h3>
+                                    <button onclick="document.getElementById('playerArea').classList.add('hidden')" class="text-xs text-slate-500 hover:text-white underline">Tutup Player</button>
+                                </div>
+                                <div class="relative pt-[56.25%] bg-black rounded-3xl overflow-hidden shadow-2xl ring-1 ring-slate-700">
+                                    <iframe id="videoPlayer" class="absolute inset-0 w-full h-full" src="" frameborder="0" allowfullscreen></iframe>
                                 </div>
                             </div>
-                            <h3 class="text-red-600 font-bold uppercase tracking-widest text-sm mb-2">Sinopsis</h3>
-                            <p class="text-gray-300 leading-relaxed mb-8 text-lg">${m.overview || 'Sinopsis tidak tersedia.'}</p>
+
+                            <h2 class="text-4xl lg:text-5xl font-black mb-3 text-white tracking-tight">${m.title}</h2>
+                            <p class="text-slate-400 font-semibold mb-6 flex items-center gap-2">
+                                <span>${m.release_date.split('-')[0]}</span> • 
+                                <span>${m.runtime} mnt</span> • 
+                                <span class="text-yellow-500 italic font-bold">⭐ ${m.vote_average.toFixed(1)}</span>
+                            </p>
                             
-                            <h3 class="text-red-600 font-bold uppercase tracking-widest text-sm mb-4">Pemeran Utama</h3>
-                            <div class="flex gap-4 overflow-x-auto pb-4 no-scrollbar mb-8">
-                                ${m.credits.cast.slice(0, 6).map(c => `
-                                    <div class="text-center min-w-[100px]">
-                                        <img src="${c.profile_path ? IMG_URL + c.profile_path : 'https://via.placeholder.com/100'}" class="w-20 h-20 object-cover rounded-full mx-auto mb-2 border-2 border-red-600/30">
-                                        <p class="text-xs font-bold leading-tight">${c.name}</p>
+                            <div class="flex flex-wrap gap-2 mb-8">
+                                ${m.genres.map(g => `<span class="bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1 rounded-full uppercase">${g.name}</span>`).join('')}
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <div>
+                                    <h3 class="text-red-600 font-black uppercase text-xs tracking-[0.2em] mb-3 italic">Ringkasan Cerita</h3>
+                                    <p class="text-slate-300 leading-relaxed text-base">${m.overview || 'Sinopsis belum tersedia dalam database.'}</p>
+                                </div>
+                                <div>
+                                    <h3 class="text-red-600 font-black uppercase text-xs tracking-[0.2em] mb-4 italic">Pemeran Kunci</h3>
+                                    <div class="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+                                        ${m.credits.cast.slice(0, 5).map(c => `
+                                            <div class="text-center min-w-[80px]">
+                                                <img src="${c.profile_path ? IMG_URL + c.profile_path : 'https://via.placeholder.com/100'}" class="w-16 h-16 object-cover rounded-2xl mx-auto mb-2 ring-2 ring-slate-700 shadow-lg">
+                                                <p class="text-[9px] font-bold text-slate-200 truncate w-20 uppercase">${c.name}</p>
+                                            </div>
+                                        `).join('')}
                                     </div>
-                                `).join('')}
+                                </div>
                             </div>
 
                             ${trailer ? `
-                                <h3 class="text-red-600 font-bold uppercase tracking-widest text-sm mb-4">Trailer Resmi</h3>
-                                <iframe class="w-full aspect-video rounded-xl shadow-2xl" src="https://www.youtube.com/embed/${trailer.key}" frameborder="0" allowfullscreen></iframe>
+                                <div class="mt-12 border-t border-slate-800 pt-8">
+                                    <h3 class="text-slate-500 font-black uppercase text-xs tracking-[0.2em] mb-4 italic">Trailer Resmi</h3>
+                                    <iframe class="w-full md:w-2/3 aspect-video rounded-2xl opacity-80 hover:opacity-100 transition shadow-lg" src="https://www.youtube.com/embed/${trailer.key}" frameborder="0" allowfullscreen></iframe>
+                                </div>
                             ` : ''}
                         </div>
                     </div>
                 `;
-            } catch (err) { content.innerHTML = '<p class="p-20 text-center">Gagal memuat detail film.</p>'; }
+            } catch (err) { content.innerHTML = '<div class="p-20 text-center text-red-500 font-bold">ERROR: Gagal memuat data dari server.</div>'; }
+        }
+
+        function playMovie(id) {
+            const area = document.getElementById('playerArea');
+            const player = document.getElementById('videoPlayer');
+            player.src = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}`;
+            area.classList.remove('hidden');
+            area.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function closeModal() {
             document.getElementById('movieModal').classList.add('hidden');
             document.body.classList.remove('modal-open');
-            document.getElementById('modalContent').innerHTML = '';
+            document.getElementById('videoPlayer').src = ''; // Stop video
         }
 
         function searchMovies() {
             const q = document.getElementById('searchInput').value;
-            if(q) fetchMovies(`/search?q=${q}`, `Hasil Pencarian: "${q}"`);
+            if(q) fetchMovies(`/search?q=${q}`, `Hasil Cari: "${q}"`);
         }
+
+        // Input search dengan tombol Enter
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchMovies();
+        });
 
         fetchGenres();
         fetchMovies();

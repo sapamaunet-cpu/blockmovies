@@ -1,7 +1,12 @@
 {
   "version": 2,
   "rewrites": [
+    { "source": "/api/sitemap.xml", "destination": "/api/sitemap.js" },
     { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/movie/(.*)", "destination": "/public/index.html" },
+    { "source": "/search", "destination": "/public/index.html" },
+    { "source": "/genre/(.*)", "destination": "/public/index.html" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap.js" },
     { "source": "/(.*)", "destination": "/public/$1" },
     { "source": "/", "destination": "/public/index.html" }
   ]

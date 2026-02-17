@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MovieID - Streaming & Katalog Film</title>
+    <title id="pageTitle">MovieID - Streaming & Katalog Film</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -26,20 +26,20 @@
 
     <header class="p-6 bg-[#0f172a]/80 backdrop-blur-xl sticky top-0 z-50 border-b border-slate-800">
         <div class="container mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-            <h1 class="text-3xl font-extrabold text-red-600 tracking-tighter cursor-pointer" onclick="location.reload()">BLOK<span class="text-white">MOVIE</span></h1>
+            <h1 class="text-3xl font-extrabold text-red-600 tracking-tighter cursor-pointer" onclick="navigateTo('/')">BLOK<span class="text-white">MOVIE</span></h1>
             
             <div class="flex flex-1 w-full max-w-2xl group">
                 <input type="text" id="searchInput" placeholder="Cari judul film..." 
                     class="w-full p-4 rounded-l-2xl bg-slate-800 border-y border-l border-slate-700 focus:border-red-500 focus:outline-none transition text-white">
                 <button onclick="searchMovies()" class="bg-red-600 px-8 py-4 rounded-r-2xl font-bold hover:bg-red-700 transition flex items-center gap-2 text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor font-bold"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     <span class="hidden md:block">Cari</span>
                 </button>
             </div>
         </div>
         
         <div class="container mx-auto mt-6 flex gap-3 overflow-x-auto pb-2 no-scrollbar" id="genreList">
-            <button onclick="fetchMovies()" class="bg-red-600 text-white px-6 py-2 rounded-full text-sm font-semibold transition hover:scale-105 shadow-lg shadow-red-900/20">Semua</button>
+            <button onclick="navigateTo('/')" class="bg-red-600 text-white px-6 py-2 rounded-full text-sm font-semibold transition hover:scale-105 shadow-lg shadow-red-900/20">Semua</button>
         </div>
     </header>
 
@@ -56,7 +56,38 @@
         const API_URL = '/api';
         const IMG_URL = 'https://image.tmdb.org/t/p/w500';
 
-        // Load Genre
+        // --- SISTEM ROUTING BARU ---
+        function navigateTo(path) {
+            window.history.pushState({}, "", path);
+            handleRouting();
+        }
+
+        async function handleRouting() {
+            const path = window.location.pathname;
+            const params = new URLSearchParams(window.location.search);
+
+            if (path.startsWith('/movie/')) {
+                const id = path.split('/')[2];
+                showDetail(id);
+            } else if (path === '/search') {
+                const query = params.get('q');
+                fetchMovies(`/search?q=${query}`, `Hasil Cari: "${query}"`);
+                closeModal(false); 
+            } else if (path.startsWith('/genre/')) {
+                const genreId = path.split('/')[2];
+                const genreName = params.get('name') || 'Genre';
+                fetchMovies(`/discover?genreId=${genreId}`, `Genre: ${genreName}`);
+                closeModal(false);
+            } else {
+                closeModal(false);
+                fetchMovies();
+                document.title = "MovieID - Streaming & Katalog Film";
+            }
+        }
+
+        window.onpopstate = handleRouting;
+
+        // --- FUNGSI UPDATE ---
         async function fetchGenres() {
             try {
                 const res = await fetch(`${API_URL}/genres`);
@@ -66,13 +97,12 @@
                     const btn = document.createElement('button');
                     btn.className = "bg-slate-800 text-slate-300 px-6 py-2 rounded-full text-sm font-semibold hover:bg-red-600 hover:text-white transition whitespace-nowrap border border-slate-700";
                     btn.innerText = g.name;
-                    btn.onclick = () => fetchMovies(`/discover?genreId=${g.id}`, `Genre: ${g.name}`);
+                    btn.onclick = () => navigateTo(`/genre/${g.id}?name=${encodeURIComponent(g.name)}`);
                     container.appendChild(btn);
                 });
             } catch(e) { console.log(e) }
         }
 
-        // Load Movies
         async function fetchMovies(path = '/movies', title = 'Film Populer') {
             const grid = document.getElementById('movieGrid');
             document.getElementById('sectionTitle').innerText = title;
@@ -83,7 +113,7 @@
                 const data = await res.json();
                 
                 grid.innerHTML = data.results.map(m => `
-                    <div onclick="showDetail(${m.id})" class="movie-card group bg-slate-800 rounded-2xl overflow-hidden cursor-pointer shadow-xl transition-all duration-300 hover:-translate-y-2">
+                    <div onclick="navigateTo('/movie/${m.id}')" class="movie-card group bg-slate-800 rounded-2xl overflow-hidden cursor-pointer shadow-xl transition-all duration-300 hover:-translate-y-2">
                         <div class="relative overflow-hidden">
                             <img src="${m.poster_path ? IMG_URL + m.poster_path : 'https://via.placeholder.com/500x750?text=No+Image'}" 
                                 class="w-full h-[320px] object-cover transition-transform duration-500">
@@ -105,7 +135,6 @@
             } catch (err) { grid.innerHTML = '<p class="col-span-full text-center text-red-500">Gagal memuat data.</p>'; }
         }
 
-        // Show Detail & Player
         async function showDetail(id) {
             const modal = document.getElementById('movieModal');
             const content = document.getElementById('modalContent');
@@ -116,6 +145,7 @@
             try {
                 const res = await fetch(`${API_URL}/movie/${id}`);
                 const m = await res.json();
+                document.title = `${m.title} - MovieID`;
                 const trailer = m.videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
 
                 content.innerHTML = `
@@ -127,85 +157,55 @@
                                 TONTON SEKARANG
                             </button>
                         </div>
-                        
                         <div class="p-8 lg:p-12 flex-1">
                             <div id="playerArea" class="hidden mb-10 fade-in">
-                                <div class="flex items-center justify-between mb-4">
-                                    <h3 class="text-red-500 font-black uppercase tracking-tighter text-lg italic">Streaming Mode</h3>
-                                    <button onclick="document.getElementById('playerArea').classList.add('hidden')" class="text-xs text-slate-500 hover:text-white underline">Tutup Player</button>
-                                </div>
                                 <div class="relative pt-[56.25%] bg-black rounded-3xl overflow-hidden shadow-2xl ring-1 ring-slate-700">
                                     <iframe id="videoPlayer" class="absolute inset-0 w-full h-full" src="" frameborder="0" allowfullscreen></iframe>
                                 </div>
                             </div>
-
                             <h2 class="text-4xl lg:text-5xl font-black mb-3 text-white tracking-tight">${m.title}</h2>
                             <p class="text-slate-400 font-semibold mb-6 flex items-center gap-2">
-                                <span>${m.release_date.split('-')[0]}</span> • 
-                                <span>${m.runtime} mnt</span> • 
-                                <span class="text-yellow-500 italic font-bold">⭐ ${m.vote_average.toFixed(1)}</span>
+                                <span>${m.release_date.split('-')[0]}</span> • <span>${m.runtime} mnt</span> • <span class="text-yellow-500 italic font-bold">⭐ ${m.vote_average.toFixed(1)}</span>
                             </p>
-                            
                             <div class="flex flex-wrap gap-2 mb-8">
                                 ${m.genres.map(g => `<span class="bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1 rounded-full uppercase">${g.name}</span>`).join('')}
                             </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                <div>
-                                    <h3 class="text-red-600 font-black uppercase text-xs tracking-[0.2em] mb-3 italic">Ringkasan Cerita</h3>
-                                    <p class="text-slate-300 leading-relaxed text-base">${m.overview || 'Sinopsis belum tersedia dalam database.'}</p>
-                                </div>
-                                <div>
-                                    <h3 class="text-red-600 font-black uppercase text-xs tracking-[0.2em] mb-4 italic">Pemeran Kunci</h3>
-                                    <div class="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                                        ${m.credits.cast.slice(0, 5).map(c => `
-                                            <div class="text-center min-w-[80px]">
-                                                <img src="${c.profile_path ? IMG_URL + c.profile_path : 'https://via.placeholder.com/100'}" class="w-16 h-16 object-cover rounded-2xl mx-auto mb-2 ring-2 ring-slate-700 shadow-lg">
-                                                <p class="text-[9px] font-bold text-slate-200 truncate w-20 uppercase">${c.name}</p>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            </div>
-
-                            ${trailer ? `
-                                <div class="mt-12 border-t border-slate-800 pt-8">
-                                    <h3 class="text-slate-500 font-black uppercase text-xs tracking-[0.2em] mb-4 italic">Trailer Resmi</h3>
-                                    <iframe class="w-full md:w-2/3 aspect-video rounded-2xl opacity-80 hover:opacity-100 transition shadow-lg" src="https://www.youtube.com/embed/${trailer.key}" frameborder="0" allowfullscreen></iframe>
-                                </div>
-                            ` : ''}
+                            <p class="text-slate-300 leading-relaxed text-base mb-8">${m.overview || 'Sinopsis belum tersedia.'}</p>
+                            ${trailer ? `<iframe class="w-full aspect-video rounded-2xl shadow-lg" src="https://www.youtube.com/embed/${trailer.key}" frameborder="0" allowfullscreen></iframe>` : ''}
                         </div>
                     </div>
                 `;
-            } catch (err) { content.innerHTML = '<div class="p-20 text-center text-red-500 font-bold">ERROR: Gagal memuat data dari server.</div>'; }
+            } catch (err) { content.innerHTML = '<div class="p-20 text-center text-red-500 font-bold">ERROR: Gagal memuat data.</div>'; }
         }
 
         function playMovie(id) {
-            const area = document.getElementById('playerArea');
-            const player = document.getElementById('videoPlayer');
-            player.src = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}`;
-            area.classList.remove('hidden');
-            area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById('videoPlayer').src = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}`;
+            document.getElementById('playerArea').classList.remove('hidden');
+            document.getElementById('playerArea').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function closeModal() {
+        function closeModal(updateUrl = true) {
             document.getElementById('movieModal').classList.add('hidden');
             document.body.classList.remove('modal-open');
-            document.getElementById('videoPlayer').src = ''; // Stop video
+            document.getElementById('videoPlayer').src = '';
+            if (updateUrl && window.location.pathname !== '/') {
+                window.history.pushState({}, "", "/");
+                document.title = "MovieID - Streaming & Katalog Film";
+            }
         }
 
         function searchMovies() {
             const q = document.getElementById('searchInput').value;
-            if(q) fetchMovies(`/search?q=${q}`, `Hasil Cari: "${q}"`);
+            if(q) navigateTo(`/search?q=${encodeURIComponent(q)}`);
         }
 
-        // Input search dengan tombol Enter
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchMovies();
         });
 
+        // Inisialisasi
         fetchGenres();
-        fetchMovies();
+        handleRouting();
     </script>
 </body>
 </html>

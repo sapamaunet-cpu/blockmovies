@@ -183,7 +183,7 @@
         function playMovie(id) {
             const area = document.getElementById('playerArea');
             const player = document.getElementById('videoPlayer');
-            player.src = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}`;
+            player.src = `https://vidsrc.me/embed/movie?tmdb=${id}`;
             area.classList.remove('hidden');
             area.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
